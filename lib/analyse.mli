@@ -8,5 +8,5 @@ module Analysis : sig
   val of_dir : job:Current.Job.t -> Fpath.t -> (t, [ `Msg of string ]) result Lwt.t
 end
 
-val examine : Current_git.Commit.t Current.t -> Analysis.t Current.t
-(** [examine src] returns a list of "*.opam" files in [src]. *)
+val examine : opam_repository:Current_git.Commit.t Current.t -> Current_git.Commit.t Current.t -> Analysis.t Current.t
+(** [examine ~opam_repository src] returns a list of "*.opam" files in [src]. *)

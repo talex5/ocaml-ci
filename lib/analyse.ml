@@ -90,16 +90,25 @@ module Examine = struct
   type t = No_context
 
   module Key = struct
-    type t = Current_git.Commit.t
+    type t = {
+      src : Current_git.Commit.t;
+      opam_repository : Current_git.Commit.t;
+    }
 
-    let digest t = Current_git.Commit.id t
+    let digest { src; opam_repository } =
+      let json = `Assoc [
+        "src", `String (Current_git.Commit.id src);
+        "opam-repository", `String (Current_git.Commit.id opam_repository);
+      ] in
+      Yojson.Safe.to_string json
   end
 
   module Value = Analysis
 
   let id = "ci-analyse"
 
-  let build No_context job src =
+  let build No_context job { Key.src; opam_repository } =
+    ignore opam_repository;
     Current.Job.start job ~pool ~level:Current.Level.Harmless >>= fun () ->
     Current_git.with_checkout ~job src (Analysis.of_dir ~job)
 
@@ -110,7 +119,8 @@ end
 
 module Examine_cache = Current_cache.Make(Examine)
 
-let examine src =
+let examine ~opam_repository src =
   Current.component "Analyse" |>
-  let> src = src in
-  Examine_cache.get Examine.No_context src
+  let> src = src
+  and> opam_repository = opam_repository in
+  Examine_cache.get Examine.No_context { Examine.Key.src; opam_repository }

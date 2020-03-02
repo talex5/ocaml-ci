@@ -42,6 +42,9 @@ let job_id x =
 
 module Lint = Ocaml_ci.Lint.Make (Conf.Builder_amd1)
 
+let opam_repository () =
+  Current_git.clone ~schedule:weekly "git://github.com/ocaml/opam-repository"
+
 let build_with_docker ~repo ~analysis source =
   let build docker variant =
     let build_result =
@@ -115,8 +118,9 @@ let summarise results =
 
 let local_test repo () =
   let src = Git.Local.head_commit repo in
+  let opam_repository = opam_repository () in
   let repo = Current.return { Github.Repo_id.owner = "local"; name = "test" }
-  and analysis = Analyse.examine src in
+  and analysis = Analyse.examine ~opam_repository src in
   Current.component "summarise" |>
   let** result =
     build_with_docker ~repo ~analysis (`Git src)
@@ -132,7 +136,8 @@ let v ~app () =
   let refs = Github.Api.Repo.ci_refs repo |> set_active_refs ~repo in
   refs |> Current.list_iter ~pp:Github.Api.Commit.pp @@ fun head ->
   let src = Git.fetch (Current.map Github.Api.Commit.id head) in
-  let analysis = Analyse.examine src in
+  let opam_repository = opam_repository () in
+  let analysis = Analyse.examine ~opam_repository src in
   let builds =
     let repo = Current.map Github.Api.Repo.id repo in
     build_with_docker ~repo ~analysis (`Git src) in
