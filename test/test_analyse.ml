@@ -1,7 +1,7 @@
 open Lwt.Infix
 
 module Analysis = struct
-  include Ocaml_ci.Analyse.Analysis
+  include Ocaml_ci.Tree_analysis
 
   type ocamlformat_source = Ocaml_ci.Analyse_ocamlformat.source =
     | Opam of { version : string }

@@ -20,16 +20,18 @@ end
 
 let dev_pool = Current.Pool.create ~label:"docker" 1
 
-module Builder(C : sig val docker_context : string end) :
-  Ocaml_ci.S.DOCKER_CONTEXT with type source = Current_docker.S.source =
-struct
+module type DOCKER = sig
+  include Ocaml_ci.S.DOCKER_CONTEXT with type source = Current_docker.S.source
+  val docker_context : string option
+end
 
-  module Docker = Current_docker.Make(struct
-      let docker_context =
-        match profile with
-        | `Production -> Some C.docker_context
-        | `Dev -> None
-    end)
+module Builder(C : sig val docker_context : string end) : DOCKER = struct
+  let docker_context =
+    match profile with
+    | `Production -> Some C.docker_context
+    | `Dev -> None
+
+  module Docker = Current_docker.Make(struct let docker_context = docker_context end)
 
   (** Limit number of concurrent builds. *)
   let pool =
