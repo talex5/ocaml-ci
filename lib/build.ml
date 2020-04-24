@@ -10,9 +10,13 @@ module Spec = struct
     let s = Analyse.Analysis.to_yojson x |> Yojson.Safe.to_string in
     `String (Digest.string s |> Digest.to_hex)
 
+  type repo = Current_github.Repo_id.t
+
+  let repo_to_yojson repo = `String (Fmt.to_to_string Current_github.Repo_id.pp repo)
+
   type ty = [
     | `Opam of [ `Build | `Lint of [ `Fmt | `Doc ]] * analysis
-    | `Duniverse
+    | `Duniverse of repo           (* Used to choose a build cache *)
   ] [@@deriving to_yojson]
 
   type t = {
@@ -24,8 +28,8 @@ module Spec = struct
   let opam ~label ~platform ~analysis op =
     { label; platform; ty = `Opam (op, analysis) }
 
-  let duniverse ~label ~platform =
-    { label; platform; ty = `Duniverse }
+  let duniverse ~label ~repo ~platform =
+    { label; platform; ty = `Duniverse repo }
 
   let pp f t = Fmt.string f t.label
   let compare a b = compare a.label b.label
@@ -42,14 +46,12 @@ module Op = struct
   module Key = struct
     type t = {
       commit : Current_git.Commit.t;            (* The source code to build and test *)
-      repo : Current_github.Repo_id.t;          (* Used to choose a build cache *)
       label : string;                           (* A unique ID for this build within the commit *)
     }
 
-    let to_json { commit; label; repo } =
+    let to_json { commit; label } =
       `Assoc [
         "commit", `String (Current_git.Commit.hash commit);
-        "repo", `String (Fmt.to_to_string Current_github.Repo_id.pp repo);
         "label", `String label;
       ]
 
@@ -80,7 +82,7 @@ module Op = struct
     | Error (`Msg m) -> raise (Failure m)
 
   let run { Builder.docker_context; pool; build_timeout } job
-      { Key.commit; label = _; repo } { Value.base; variant; ty } =
+      { Key.commit; label = _ } { Value.base; variant; ty } =
     let make_dockerfile =
       let base = Raw.Image.hash base in
       match ty with
@@ -88,7 +90,7 @@ module Op = struct
         Opam_build.dockerfile ~base ~info:analysis ~variant
       | `Opam (`Lint `Fmt, analysis) -> Lint.fmt_dockerfile ~base ~info:analysis ~variant
       | `Opam (`Lint `Doc, analysis) -> Lint.doc_dockerfile ~base ~info:analysis ~variant
-      | `Duniverse ->
+      | `Duniverse repo ->
         Duniverse_build.dockerfile ~base ~repo ~variant
     in
     Current.Job.write job
@@ -111,10 +113,10 @@ module Op = struct
     let pp_error_command f = Fmt.string f "Docker build" in
     Current.Process.exec ~cancellable:true ~pp_error_command ~job cmd
 
-  let pp f ({ Key.repo; commit; label }, _) =
-    Fmt.pf f "@[<v2>test %a %a (%s)@]"
-      Current_github.Repo_id.pp repo
-      Current_git.Commit.pp commit
+  let pp f ({ Key.commit; label }, _) =
+    let id = Current_git.Commit.id commit in
+    Fmt.pf f "@[<v>Commit %a@,Variant: %s@]"
+      Current_git.Commit_id.pp id
       label
 
   let auto_cancel = true
@@ -153,7 +155,7 @@ let v ~schedule ~repo ~spec source =
   let result =
     state |> Result.map @@ fun () ->
     match spec.ty with
-    | `Duniverse
+    | `Duniverse _
     | `Opam (`Build, _) -> `Built
     | `Opam (`Lint _, _) -> `Checked
   in

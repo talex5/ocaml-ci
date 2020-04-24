@@ -67,7 +67,8 @@ let get_job_id x =
 let build_with_docker ~repo ~analysis source =
   Current.with_context analysis @@ fun () ->
   let specs =
-    let+ analysis = Current.state ~hidden:true analysis in
+    let+ analysis = Current.state ~hidden:true analysis
+    and+ repo = repo in
     match analysis with
     | Error _ ->
         (* If we don't have the analysis yet, just use the empty list. *)
@@ -78,7 +79,7 @@ let build_with_docker ~repo ~analysis source =
           let variant = "debian-10-ocaml-" ^ ov in
           let builder = Conf.Builder.amd1 in    (* XXX: maybe use other machines too? *)
           let platform = { Platform.label = ov; variant; builder } in
-          Build.Spec.duniverse ~label:variant ~platform
+          Build.Spec.duniverse ~label:variant ~platform ~repo
         )
     | Ok analysis ->
       (* Library (non-duniverse) project *)
@@ -96,7 +97,7 @@ let build_with_docker ~repo ~analysis source =
       lint @ builds
   in
   let builds = specs |> Current.list_map (module Build.Spec) (fun spec ->
-      let+ result = Build.v ~schedule:daily ~repo ~spec source
+      let+ result = Build.v ~schedule:daily ~spec source
       and+ spec = spec in
       Build.Spec.label spec, result
     ) in
