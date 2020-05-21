@@ -33,10 +33,22 @@
   ocaml-ci-api
   conf-libev
   (dockerfile (>= 6.3.0))
-  opam-0install
   (ocaml-version (>= 2.4.0))
   (alcotest (and (>= 1.0.0) :with-test))
   (alcotest-lwt (and (>= 1.0.1) :with-test))
+))
+
+(package
+ (name ocaml-ci-solver)
+ (synopsis "Choose package versions to test")
+ (depends
+  yojson
+  lwt
+  logs
+  fmt
+  ocaml-ci-api
+  conf-libev
+  opam-0install
 ))
 
 (package
