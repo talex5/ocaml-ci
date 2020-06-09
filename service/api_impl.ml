@@ -147,7 +147,8 @@ let make_org ~engine owner =
     match String_map.find_opt name !repos with
     | Some repo -> Some repo
     | None ->
-      if Index.is_known_repo ~owner ~name then (
+      let active_repos = Index.get_active_repos ~owner in
+      if Index.Repo_set.mem name active_repos then (
         let repo = make_repo ~engine ~owner ~name in
         repos := String_map.add name repo !repos;
         Some repo
@@ -183,7 +184,7 @@ let make_ci ~engine =
     match String_map.find_opt owner !orgs with
     | Some org -> Some org
     | None ->
-      if Index.Account_set.mem owner (Index.get_active_accounts ()) then (
+      if Index.Account_set.mem owner (Index.get_active_owners ()) then (
         let org = make_org ~engine owner in
         orgs := String_map.add owner org !orgs;
         Some org
@@ -207,7 +208,7 @@ let make_ci ~engine =
       let open CI.Orgs in
       release_param_caps ();
       let response, results = Service.Response.create Results.init_pointer in
-      let owners = Index.get_active_accounts () |> Index.Account_set.elements in
+      let owners = Index.get_active_owners () |> Index.Account_set.elements in
       Results.orgs_set_list results owners |> ignore;
       Service.return response
   end

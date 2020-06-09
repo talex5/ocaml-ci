@@ -18,9 +18,6 @@ val record :
   unit
 (** [record ~repo ~hash jobs] updates the entry for [repo, hash] to point at [jobs]. *)
 
-val is_known_repo : owner:string -> name:string -> bool
-(** [is_known_repo ~owner ~name] is [true] iff there is an entry for a commit in repository [owner/name]. *)
-
 val list_repos : string -> string list
 (** [list_repos owner] lists all the tracked repos under [owner]. *)
 
@@ -41,14 +38,20 @@ val get_full_hash : owner:string -> name:string -> string -> (string, [> `Ambigu
 (** [get_full_hash ~owner ~name short_hash] returns the full hash for [short_hash]. *)
 
 module Account_set : Set.S with type elt = string
-module Repo_map : Map.S with type key = Current_github.Repo_id.t
+module Repo_set : Set.S with type elt = string
 
-val set_active_accounts : Account_set.t -> unit
-(** [set_active_accounts accounts] record that [accounts] is the set of accounts on which the CI is installed.
+val set_active_owners : Account_set.t -> unit
+(** [set_active_owners owners] record that [owners] is the set of accounts on which the CI is installed.
     This is displayed in the CI web interface. *)
 
-val get_active_accounts : unit -> Account_set.t
-(** [get_active_accounts ()] is the last value passed to [set_active_accounts], or [[]] if not known yet. *)
+val get_active_owners : unit -> Account_set.t
+(** [get_active_owners ()] is the last value passed to [set_active_owners], or [[]] if not known yet. *)
+
+val set_active_repos : owner:string -> Repo_set.t -> unit
+(** [set_active_repos ~owner repos] record that [repos] is the set of active repositories under [owner]. *)
+
+val get_active_repos : owner:string -> Repo_set.t
+(** [get_active_repos ~owner] is the last value passed to [set_active_repos] for [owner], or [[]] if not known yet. *)
 
 val set_active_refs : repo:Current_github.Repo_id.t -> (string * string) list -> unit
 (** [set_active_refs ~repo entries] records that [entries] is the current set of Git references that the CI
