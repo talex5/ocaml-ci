@@ -75,7 +75,9 @@ let platforms =
     v ?arch (OV.to_string ov) distro ov in
   match profile with
   | `Production ->
-      let distros = List.map make_distro (DD.active_tier1_distros `X86_64) |> List.flatten in
+      let distros =
+        DD.active_tier1_distros `X86_64 @ DD.active_tier2_distros `X86_64 |>
+        List.map make_distro |> List.flatten in
       (* The first one in this list is used for lint actions *)
       let ovs = List.rev OV.Releases.recent @ OV.Releases.unreleased_betas in
       List.map make_release ovs @ distros
